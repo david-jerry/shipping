@@ -1,5 +1,6 @@
 import Image from "next/image"
 import Link from "next/link"
+import { AnimatedStat } from "@/components/layout/AnimatedStat"
 import {
   CheckCircle2,
   Zap,
@@ -137,6 +138,7 @@ export default function AboutPage() {
             src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?w=1920&q=80"
             alt="Global shipping port aerial view"
             fill
+            sizes="100vw"
             className="object-cover opacity-40 brightness-[0.7] dark:brightness-[0.4]"
             priority
           />
@@ -178,7 +180,7 @@ export default function AboutPage() {
               </p>
             </div>
             <p className="leading-relaxed font-light text-muted-foreground">
-              Our technology doesn't just track shipments; it predicts
+              Our technology doesn&apos;t just track shipments; it predicts
               disruptions before they happen, automatically reroutes cargo
               around geopolitical events and weather patterns, and negotiates
               optimal carrier rates in real-time.
@@ -195,7 +197,7 @@ export default function AboutPage() {
                   className="rounded-xl border border-border bg-card p-4 transition-colors hover:bg-muted/50"
                 >
                   <div className="text-2xl font-bold tracking-tight">
-                    {stat.value}
+                    <AnimatedStat value={stat.value} />
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {stat.label}
@@ -219,7 +221,7 @@ export default function AboutPage() {
                 }`}
               >
                 <div className="text-4xl font-extrabold tracking-tight text-foreground">
-                  {metric.value}
+                  <AnimatedStat value={metric.value} />
                 </div>
                 <div className="text-sm leading-snug tracking-tight text-muted-foreground">
                   {metric.label}
@@ -239,7 +241,7 @@ export default function AboutPage() {
             </h2>
             <p className="font-light text-muted-foreground">
               From a small startup in San Francisco to a global logistics
-              platform moving billions in cargo — here's how we got here.
+              platform moving billions in cargo — here&apos;s how we got here.
             </p>
           </div>
 
@@ -443,8 +445,8 @@ export default function AboutPage() {
                 Join the Team Reshaping Global Logistics
               </h2>
               <p className="mb-8 leading-relaxed font-light text-muted-foreground">
-                We're hiring across engineering, operations, sales, and customs
-                expertise. Work with cutting-edge AI, a global team, and
+                We&apos;re hiring across engineering, operations, sales, and
+                customs expertise. Work with cutting-edge AI, a global team, and
                 meaningful problems that impact billions of deliveries every
                 year.
               </p>
@@ -469,7 +471,7 @@ export default function AboutPage() {
                   className="rounded-xl border border-border bg-muted/40 p-5 text-center"
                 >
                   <div className="text-2xl font-bold tracking-tight text-foreground">
-                    {s.value}
+                    <AnimatedStat value={s.value} />
                   </div>
                   <div className="mt-1 text-xs text-muted-foreground">
                     {s.label}

@@ -1,9 +1,17 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { usePathname } from "next/navigation"
-import { useTheme } from "next-themes"
-import { useEffect, useState, useLayoutEffect, useRef } from "react"
+import { useTheme } from "@/components/theme-provider"
+import {
+  useEffect,
+  useState,
+  useLayoutEffect,
+  useRef,
+  useSyncExternalStore,
+} from "react"
+import { authClient } from "@/lib/auth-client"
 import { cn } from "@/lib/utils"
 import gsap from "gsap"
 import {
@@ -14,7 +22,10 @@ import {
   Layers,
   Search,
   Info,
-  Mail,
+  ChevronDown,
+  User,
+  LogOut,
+  LayoutDashboard,
 } from "lucide-react"
 
 const navLinks = [
@@ -22,73 +33,99 @@ const navLinks = [
   { href: "/services", label: "Services", icon: Layers },
   { href: "/tracking", label: "Tracking", icon: Search },
   { href: "/about", label: "About", icon: Info },
-  { href: "/contact", label: "Contact", icon: Mail },
 ]
 
 export function Navbar() {
-  const { theme, resolvedTheme, setTheme } = useTheme()
+  const router = useRouter()
+  const { resolvedTheme, setTheme } = useTheme()
+  const { data: session, isPending: isSessionPending } = authClient.useSession()
   const [scrolled, setScrolled] = useState(false)
+  const [desktopAccountOpen, setDesktopAccountOpen] = useState(false)
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  )
   const pathname = usePathname()
 
-  const centerCradleRef = useRef<HTMLDivElement>(null)
+  const headerRef = useRef<HTMLElement>(null)
+  const desktopAccountMenuRef = useRef<HTMLDivElement>(null)
+  const desktopPopupRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const handleScroll = () => setScrolled(window.scrollY > 20)
+    handleScroll()
     window.addEventListener("scroll", handleScroll)
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "d" && !e.ctrlKey && !e.metaKey && !e.altKey) {
-        if (
-          e.target instanceof HTMLInputElement ||
-          e.target instanceof HTMLTextAreaElement
-        )
-          return
-        setTheme(theme === "dark" ? "light" : "dark")
+    if (!desktopAccountOpen) {
+      return
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as Node
+      const isInsideDesktop = desktopAccountMenuRef.current?.contains(target)
+
+      if (!isInsideDesktop) {
+        setDesktopAccountOpen(false)
       }
     }
-    window.addEventListener("keydown", handleKeyDown)
-    return () => window.removeEventListener("keydown", handleKeyDown)
-  }, [theme, setTheme])
 
-  const activeLink =
-    navLinks.find((link) => link.href === pathname) || navLinks[0]
-  const inactiveLinks = navLinks.filter((link) => link.href !== activeLink.href)
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setDesktopAccountOpen(false)
+      }
+    }
 
-  const leftLinks = inactiveLinks.slice(0, 2)
-  const rightLinks = inactiveLinks.slice(2, 4)
-  const ActiveIcon = activeLink.icon
-
-  useLayoutEffect(() => {
-    if (!centerCradleRef.current) return
-
-    const element = centerCradleRef.current
-    const icon = element.querySelector(".cradle-icon")
-
-    const tl = gsap.timeline({ defaults: { ease: "power2.out" } })
-
-    tl.fromTo(
-      element,
-      { yPercent: 10, scale: 0.85 },
-      { yPercent: -40, scale: 1, duration: 0.4 }
-    ).fromTo(
-      icon,
-      { rotation: -45, scale: 0.5, opacity: 0 },
-      { rotation: 0, scale: 1, opacity: 1, duration: 0.3 },
-      "-=0.25"
-    )
+    window.addEventListener("pointerdown", onPointerDown)
+    window.addEventListener("keydown", onKeyDown)
 
     return () => {
-      tl.kill()
+      window.removeEventListener("pointerdown", onPointerDown)
+      window.removeEventListener("keydown", onKeyDown)
     }
-  }, [activeLink.href])
+  }, [desktopAccountOpen])
+
+  // Process links for the balanced cradle layout
+  const activeLink = navLinks.find((link) => link.href === pathname)
+
+  useLayoutEffect(() => {
+    if (!headerRef.current) return
+
+    gsap.fromTo(
+      headerRef.current,
+      { y: -12, autoAlpha: 0 },
+      { y: 0, autoAlpha: 1, duration: 0.35, ease: "power2.out" }
+    )
+  }, [])
+
+  useLayoutEffect(() => {
+    if (!desktopAccountOpen || !desktopPopupRef.current) return
+
+    gsap.fromTo(
+      desktopPopupRef.current,
+      { y: -8, autoAlpha: 0, scale: 0.97 },
+      { y: 0, autoAlpha: 1, scale: 1, duration: 0.2, ease: "power2.out" }
+    )
+  }, [desktopAccountOpen])
+
+  const displayName =
+    session?.user?.name?.trim() || session?.user?.email || "Account"
+
+  const handleSignOut = async () => {
+    setDesktopAccountOpen(false)
+    await authClient.signOut()
+    router.push("/")
+    router.refresh()
+  }
 
   return (
     <>
-      {/* Top Desktop Header & Mobile Utility Bar */}
+      {/* Top Desktop Header */}
       <header
+        ref={headerRef}
         className={cn(
           "fixed top-0 z-50 w-full transition-all duration-300",
           "border-b border-border/60",
@@ -115,14 +152,14 @@ export function Navbar() {
                 href={link.href}
                 className={cn(
                   "relative py-1 text-sm font-medium transition-colors hover:text-foreground",
-                  pathname === link.href
+                  activeLink?.href === link.href
                     ? "font-semibold text-foreground"
                     : "text-muted-foreground/90"
                 )}
               >
                 {link.label}
-                {pathname === link.href && (
-                  <span className="absolute right-0 bottom-0 left-0 h-[2px] rounded-full bg-primary" />
+                {activeLink?.href === link.href && (
+                  <span className="absolute right-0 bottom-0 left-0 h-0.5 rounded-full bg-primary" />
                 )}
               </Link>
             ))}
@@ -131,101 +168,94 @@ export function Navbar() {
           {/* Utility Theme Control */}
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              onClick={() => {
+                const activeTheme = resolvedTheme ?? "light"
+                setTheme(activeTheme === "dark" ? "light" : "dark")
+              }}
               className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border/60 bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
               title="Toggle theme (D)"
             >
-              {resolvedTheme === "dark" ? (
+              {!mounted ? (
+                <span className="h-4 w-4" aria-hidden="true" />
+              ) : resolvedTheme === "dark" ? (
                 <Sun className="h-4 w-4" />
               ) : (
                 <Moon className="h-4 w-4" />
               )}
             </button>
 
-            <Link
-              href="/auth/login"
-              className="hidden h-9 items-center justify-center rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted md:inline-flex"
-            >
-              Sign In
-            </Link>
+            {!isSessionPending ? (
+              session ? (
+                <div
+                  ref={desktopAccountMenuRef}
+                  className="relative hidden md:block"
+                >
+                  <button
+                    type="button"
+                    onClick={() => setDesktopAccountOpen((prev) => !prev)}
+                    className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-card px-3 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
+                    aria-haspopup="menu"
+                    aria-expanded={desktopAccountOpen}
+                  >
+                    <span className="max-w-36 truncate">{displayName}</span>
+                    <ChevronDown
+                      className={cn(
+                        "h-4 w-4 text-muted-foreground transition-transform",
+                        desktopAccountOpen && "rotate-180"
+                      )}
+                    />
+                  </button>
+
+                  {desktopAccountOpen ? (
+                    <div
+                      ref={desktopPopupRef}
+                      role="menu"
+                      className="absolute right-0 z-50 mt-2 w-56 overflow-hidden rounded-lg border border-border bg-popover p-1 text-popover-foreground shadow-md will-change-transform"
+                    >
+                      <Link
+                        href="/accounts"
+                        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
+                        role="menuitem"
+                        onClick={() => setDesktopAccountOpen(false)}
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        Accounts Overview
+                      </Link>
+                      <Link
+                        href="/accounts/profile"
+                        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm hover:bg-muted"
+                        role="menuitem"
+                        onClick={() => setDesktopAccountOpen(false)}
+                      >
+                        <User className="h-4 w-4" />
+                        Profile & Settings
+                      </Link>
+                      <button
+                        type="button"
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-destructive hover:bg-destructive/10"
+                        role="menuitem"
+                        onClick={handleSignOut}
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Logout
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className="hidden h-9 items-center justify-center rounded-lg border border-border bg-card px-4 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted md:inline-flex"
+                >
+                  Sign In
+                </Link>
+              )
+            ) : (
+              <div className="hidden h-9 w-24 animate-pulse rounded-lg border border-border bg-card/60 md:block" />
+            )}
           </div>
         </div>
       </header>
-
-      {/* Modern Curved Cradle Docker (Mobile Only) */}
-      <div className="fixed bottom-0 left-0 z-50 flex w-full justify-center px-4 pb-5 select-none md:hidden">
-        <div className="relative h-[72px] w-full max-w-[400px]">
-          {/* Masked SVG Background Shape with calibrated borders for white light themes */}
-          <svg
-            className="absolute inset-0 h-full w-full drop-shadow-[0_-4px_16px_rgba(0,0,0,0.06)] dark:drop-shadow-[0_-8px_24px_rgba(0,0,0,0.4)]"
-            viewBox="0 0 400 72"
-            preserveAspectRatio="none"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            <path
-              d="M0 24C0 10.7452 10.7452 0 24 0H161.379C167.798 0 173.808 3.03713 177.586 8.18876L185.611 19.1352C192.703 28.8078 207 28.9198 214.241 19.3621L222.554 8.3855C226.335 3.39327 232.273 0.444336 238.622 0.444336H376C389.255 0.444336 400 11.1995 400 24.4547V72H0V24Z"
-              className="fill-background/95 stroke-border/80 backdrop-blur-xl dark:stroke-border/40"
-              strokeWidth="1"
-            />
-          </svg>
-
-          {/* Foreground Navigation Layer */}
-          <div className="absolute inset-0 z-10 flex items-center justify-between px-4">
-            {/* Left Hand Options */}
-            <div className="flex w-[40%] justify-around">
-              {leftLinks.map((link) => {
-                const Icon = link.icon
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="flex flex-col items-center justify-center py-2 text-muted-foreground transition-colors hover:text-foreground active:scale-90"
-                  >
-                    <Icon className="h-5 w-5 stroke-[2]" />
-                    <span className="mt-0.5 text-[10px] font-medium tracking-tight">
-                      {link.label}
-                    </span>
-                  </Link>
-                )
-              })}
-            </div>
-
-            {/* Active Raised Dynamic Floating Action Slot */}
-            <div
-              ref={centerCradleRef}
-              className="absolute top-0 left-1/2 flex -translate-x-1/2 -translate-y-[35%] flex-col items-center will-change-transform"
-            >
-              <Link
-                href={activeLink.href}
-                aria-label={activeLink.label}
-                className="flex h-13 w-13 items-center justify-center rounded-full border-4 border-background bg-primary text-primary-foreground shadow-md shadow-primary/30 transition-all duration-200 active:scale-95"
-              >
-                <ActiveIcon className="cradle-icon h-5 w-5 stroke-[2.2]" />
-              </Link>
-            </div>
-
-            {/* Right Hand Options */}
-            <div className="flex w-[40%] justify-around">
-              {rightLinks.map((link) => {
-                const Icon = link.icon
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    className="flex flex-col items-center justify-center py-2 text-muted-foreground transition-colors hover:text-foreground active:scale-90"
-                  >
-                    <Icon className="h-5 w-5 stroke-[2]" />
-                    <span className="mt-0.5 text-[10px] font-medium tracking-tight">
-                      {link.label}
-                    </span>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-      </div>
     </>
   )
 }

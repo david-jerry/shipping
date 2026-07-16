@@ -11,7 +11,7 @@ export default function AuthHeader() {
   return (
     <>
       {/* Top Navigation Utilities */}
-      <div className="z-50 absolute top-6 right-6 left-6 mx-auto flex w-full max-w-7xl items-center justify-between">
+      <div className="z-50 fixed top-6 right-6 left-6 mx-auto flex max-w-7xl items-center justify-between">
         <button
           onClick={() => router.back()}
           className="group inline-flex items-center gap-2 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

@@ -3,6 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { useState } from "react"
+import { AnimatedStat } from "@/components/layout/AnimatedStat"
 import { cn } from "@/lib/utils"
 import {
   ArrowRight,
@@ -139,18 +140,19 @@ export default function HomePage() {
   return (
     <div className="bg-background text-foreground antialiased selection:bg-primary selection:text-primary-foreground">
       {/* 1. HERO SECTION */}
-      <section className="relative min-h-[95vh] border-b border-border/40 bg-muted/20">
+      <section className="relative min-h-screen border-b border-border/40 bg-muted/20">
         <div className="absolute inset-0 z-0">
           <Image
             src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=1920&q=80"
             alt="Global shipping terminal"
             fill
-            className="object-cover opacity-[0.07] contrast-125 grayscale filter dark:opacity-[0.12]"
+            sizes="100vw"
+            className="object-cover opacity-[0.24] contrast-110 saturate-125 dark:opacity-[0.34]"
             priority
           />
         </div>
 
-        <div className="relative z-10 mx-auto max-w-7xl px-6 pt-32 pb-20 lg:pt-40 lg:pb-28">
+        <div className="relative z-10 mx-auto flex min-h-screen max-w-7xl items-center px-6 py-24">
           <div className="grid items-center gap-12 lg:grid-cols-12">
             {/* Left Content Column */}
             <div className="space-y-6 lg:col-span-7">
@@ -326,7 +328,7 @@ export default function HomePage() {
                 className={cn("text-center", idx > 0 && "md:pl-4")}
               >
                 <p className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
-                  {stat.value}
+                  <AnimatedStat value={stat.value} />
                 </p>
                 <p className="mt-1 text-xs font-medium tracking-wider text-muted-foreground uppercase">
                   {stat.label}
@@ -377,6 +379,7 @@ export default function HomePage() {
               src={modeContent[activeTab].image}
               alt={modeContent[activeTab].title}
               fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover transition-transform duration-500 hover:scale-105"
             />
           </div>
@@ -405,7 +408,7 @@ export default function HomePage() {
               {modeContent[activeTab].stats.map((s) => (
                 <div key={s.label} className="space-y-0.5">
                   <p className="text-lg font-bold tracking-tight text-foreground">
-                    {s.value}
+                    <AnimatedStat value={s.value} />
                   </p>
                   <p className="text-xs text-muted-foreground">{s.label}</p>
                 </div>
@@ -649,6 +652,7 @@ export default function HomePage() {
               src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80"
               alt="Automated warehouse fulfillment"
               fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />
             <div className="absolute inset-x-4 bottom-4 rounded-lg border border-border/80 bg-background/95 p-5 shadow backdrop-blur-sm">
@@ -808,7 +812,7 @@ export default function HomePage() {
                   className="rounded-lg border border-border bg-muted/20 p-4"
                 >
                   <p className="text-xl font-bold tracking-tight text-emerald-600 dark:text-emerald-400">
-                    {item.value}
+                    <AnimatedStat value={item.value} />
                   </p>
                   <p className="mt-0.5 text-xs text-muted-foreground">
                     {item.label}
@@ -823,6 +827,7 @@ export default function HomePage() {
               src="https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800&q=80"
               alt="Sustainable infrastructure development"
               fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />
           </div>

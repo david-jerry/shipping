@@ -3,22 +3,70 @@
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import { Package, Eye, EyeOff, ArrowLeft, Home } from "lucide-react"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { Eye, EyeOff, Package } from "lucide-react"
+import { toast } from "sonner"
+
+import { authClient } from "@/lib/auth-client"
+import { signUpSchema, type SignUpInput } from "@/lib/validation/auth"
 
 export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const router = useRouter()
+  const { data: session, isPending: isSessionPending } = authClient.useSession()
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<SignUpInput>({
+    resolver: zodResolver(signUpSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      password: "",
+      acceptedTerms: false,
+    },
+  })
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Registration logic would go here
+  const onSubmit = async (values: SignUpInput) => {
+    const name = `${values.firstName} ${values.lastName}`.trim()
+
+    try {
+      const { error } = await authClient.signUp.email({
+        name,
+        email: values.email,
+        password: values.password,
+        callbackURL: "/",
+      })
+
+      if (error) {
+        toast.error(error.message ?? "Unable to create account")
+        return
+      }
+
+      await authClient.sendVerificationEmail({
+        email: values.email,
+        callbackURL: `${window.location.origin}/auth/email-confirmation`,
+      })
+
+      toast.success("Account created. Check your inbox for verification")
+      router.push(
+        `/auth/email-confirmation?email=${encodeURIComponent(values.email)}`
+      )
+      router.refresh()
+    } catch {
+      toast.error("Unable to create account")
+    }
   }
+
+  const isLoading = isSubmitting
 
   return (
     <div className="relative z-0 flex min-h-screen flex-col justify-center bg-background px-6 py-24 text-foreground antialiased sm:px-8">
-
       {/* Center Layout Container */}
-      <div className="mx-auto flex w-full max-w-[360px] animate-in flex-col space-y-8 duration-300 fade-in-50 slide-in-from-bottom-4 sm:max-w-[400px]">
+      <div className="mx-auto flex w-full max-w-90 animate-in flex-col space-y-8 duration-300 fade-in-50 slide-in-from-bottom-4 sm:max-w-100">
         {/* Header Stack */}
         <div className="flex flex-col space-y-2 text-center">
           <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-lg border border-border bg-card shadow-sm">
@@ -33,7 +81,11 @@ export default function RegisterPage() {
         </div>
 
         {/* Dynamic Form Area */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form
+          onSubmit={handleSubmit(onSubmit)}
+          className="space-y-5"
+          noValidate
+        >
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
@@ -41,10 +93,17 @@ export default function RegisterPage() {
               </label>
               <input
                 type="text"
-                required
+                {...register("firstName")}
                 placeholder="John"
+                disabled={isLoading}
+                aria-invalid={Boolean(errors.firstName)}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
               />
+              {errors.firstName ? (
+                <p className="text-xs text-destructive">
+                  {errors.firstName.message}
+                </p>
+              ) : null}
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-medium text-muted-foreground">
@@ -52,10 +111,17 @@ export default function RegisterPage() {
               </label>
               <input
                 type="text"
-                required
+                {...register("lastName")}
                 placeholder="Doe"
+                disabled={isLoading}
+                aria-invalid={Boolean(errors.lastName)}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
               />
+              {errors.lastName ? (
+                <p className="text-xs text-destructive">
+                  {errors.lastName.message}
+                </p>
+              ) : null}
             </div>
           </div>
 
@@ -65,10 +131,15 @@ export default function RegisterPage() {
             </label>
             <input
               type="email"
-              required
+              {...register("email")}
               placeholder="name@company.com"
+              disabled={isLoading}
+              aria-invalid={Boolean(errors.email)}
               className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
             />
+            {errors.email ? (
+              <p className="text-xs text-destructive">{errors.email.message}</p>
+            ) : null}
           </div>
 
           <div className="space-y-1.5">
@@ -78,12 +149,15 @@ export default function RegisterPage() {
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
-                required
+                {...register("password")}
                 placeholder="••••••••"
+                disabled={isLoading}
+                aria-invalid={Boolean(errors.password)}
                 className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 pr-10 text-sm shadow-sm transition-colors placeholder:text-muted-foreground/60 focus-visible:ring-1 focus-visible:ring-ring focus-visible:outline-none"
               />
               <button
                 type="button"
+                disabled={isLoading}
                 onClick={() => setShowPassword(!showPassword)}
                 className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground/80 transition-colors hover:text-foreground"
               >
@@ -94,14 +168,20 @@ export default function RegisterPage() {
                 )}
               </button>
             </div>
+            {errors.password ? (
+              <p className="text-xs text-destructive">
+                {errors.password.message}
+              </p>
+            ) : null}
           </div>
 
           {/* Terms Compliance Check */}
           <div className="flex items-start gap-2 pt-1">
             <input
               type="checkbox"
-              required
               id="terms"
+              {...register("acceptedTerms")}
+              disabled={isLoading}
               className="mt-0.5 h-3.5 w-3.5 rounded border-input bg-background text-primary focus:ring-0 focus:ring-offset-0"
             />
             <label
@@ -124,13 +204,23 @@ export default function RegisterPage() {
               </Link>
             </label>
           </div>
+          {errors.acceptedTerms ? (
+            <p className="text-xs text-destructive">
+              {errors.acceptedTerms.message}
+            </p>
+          ) : null}
 
           {/* Form Action */}
           <button
             type="submit"
+            disabled={isLoading || isSessionPending || !!session}
             className="inline-flex h-9 w-full items-center justify-center rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none"
           >
-            Create Account
+            {isLoading
+              ? "Creating account..."
+              : session
+                ? "Already signed in"
+                : "Create Account"}
           </button>
         </form>
 

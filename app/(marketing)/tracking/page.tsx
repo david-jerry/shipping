@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
+import { useMutation } from "@tanstack/react-query"
 import {
   Search,
   MapPin,
@@ -11,176 +12,54 @@ import {
   Package,
   AlertCircle,
 } from "lucide-react"
+import { trackDeliveryByCodeAction } from "@/app/actions/deliveries"
+import { type DeliveryRow } from "@/lib/deliveries"
 import { cn } from "@/lib/utils"
 
-const demoShipments: Record<
-  string,
-  {
-    status: string
-    statusVariant: "emerald" | "amber" | "primary"
-    eta: string
-    progress: number
-    origin: string
-    destination: string
-    mode: string
-    weight: string
-    history: {
-      time: string
-      event: string
-      location: string
-      completed: boolean
-    }[]
+function deliveryProgress(status: DeliveryRow["status"]) {
+  if (status === "Delivered") {
+    return 100
   }
-> = {
-  "LYB-7843291": {
-    status: "In Transit",
-    statusVariant: "emerald",
-    eta: "Jul 15, 2026",
-    progress: 75,
-    origin: "Shanghai, CN",
-    destination: "Rotterdam, NL",
-    mode: "Ocean Freight",
-    weight: "4,200 TEU",
-    history: [
-      {
-        time: "Jul 10, 08:30",
-        event: "Shipment picked up",
-        location: "Shanghai, CN",
-        completed: true,
-      },
-      {
-        time: "Jul 10, 14:00",
-        event: "Departed origin facility",
-        location: "Shanghai Port",
-        completed: true,
-      },
-      {
-        time: "Jul 12, 09:15",
-        event: "Arrived at transshipment hub",
-        location: "Singapore",
-        completed: true,
-      },
-      {
-        time: "Jul 12, 22:00",
-        event: "Departed transshipment hub",
-        location: "Singapore",
-        completed: true,
-      },
-      {
-        time: "Jul 14, 06:45",
-        event: "Customs clearance in progress",
-        location: "Port of Rotterdam",
-        completed: true,
-      },
-      {
-        time: "Jul 15, 08:00",
-        event: "Estimated delivery",
-        location: "Rotterdam, NL",
-        completed: false,
-      },
-    ],
-  },
-  "LYB-9921047": {
-    status: "Out for Delivery",
-    statusVariant: "amber",
-    eta: "Jul 13, 2026",
-    progress: 90,
-    origin: "Dubai, AE",
-    destination: "Frankfurt, DE",
-    mode: "Air Freight",
-    weight: "2,400 kg",
-    history: [
-      {
-        time: "Jul 11, 10:00",
-        event: "Shipment picked up",
-        location: "Dubai, AE",
-        completed: true,
-      },
-      {
-        time: "Jul 11, 18:30",
-        event: "Departed origin facility",
-        location: "DXB Airport",
-        completed: true,
-      },
-      {
-        time: "Jul 12, 05:00",
-        event: "Arrived at destination hub",
-        location: "Frankfurt Airport",
-        completed: true,
-      },
-      {
-        time: "Jul 13, 07:00",
-        event: "Out for delivery",
-        location: "Frankfurt, DE",
-        completed: true,
-      },
-      {
-        time: "Jul 13, 14:00",
-        event: "Estimated delivery",
-        location: "Frankfurt, DE",
-        completed: false,
-      },
-    ],
-  },
-  "LYB-5567823": {
-    status: "Delivered",
-    statusVariant: "primary",
-    eta: "Delivered Jul 12",
-    progress: 100,
-    origin: "Mexico City, MX",
-    destination: "Houston, TX",
-    mode: "Ground Transport",
-    weight: "18,500 kg",
-    history: [
-      {
-        time: "Jul 11, 09:00",
-        event: "Shipment picked up",
-        location: "Mexico City, MX",
-        completed: true,
-      },
-      {
-        time: "Jul 11, 16:00",
-        event: "Departed origin facility",
-        location: "Mexico City Hub",
-        completed: true,
-      },
-      {
-        time: "Jul 12, 02:30",
-        event: "Arrived at destination facility",
-        location: "Houston, TX",
-        completed: true,
-      },
-      {
-        time: "Jul 12, 08:00",
-        event: "Out for delivery",
-        location: "Houston, TX",
-        completed: true,
-      },
-      {
-        time: "Jul 12, 11:45",
-        event: "Delivered — Signed by: J. Martinez",
-        location: "Houston, TX",
-        completed: true,
-      },
-    ],
-  },
+  if (status === "In Transit") {
+    return 70
+  }
+  if (status === "Assigned") {
+    return 40
+  }
+  if (status === "Pending") {
+    return 15
+  }
+  return 100
+}
+
+function statusVariant(status: DeliveryRow["status"]) {
+  if (status === "Delivered") {
+    return "primary" as const
+  }
+  if (status === "In Transit" || status === "Assigned") {
+    return "emerald" as const
+  }
+  return "amber" as const
 }
 
 export default function TrackingPage() {
   const [query, setQuery] = useState("")
-  const [result, setResult] = useState<(typeof demoShipments)[string] | null>(
-    null
-  )
+  const [result, setResult] = useState<DeliveryRow | null>(null)
   const [searched, setSearched] = useState(false)
 
-  const handleTrack = () => {
+  const trackMutation = useMutation({
+    mutationFn: trackDeliveryByCodeAction,
+  })
+
+  const handleTrack = async () => {
     const trimmed = query.trim().toUpperCase()
-    setSearched(true)
-    if (demoShipments[trimmed]) {
-      setResult(demoShipments[trimmed])
-    } else {
-      setResult(null)
+    if (!trimmed) {
+      return
     }
+
+    setSearched(true)
+    const delivery = await trackMutation.mutateAsync({ trackingCode: trimmed })
+    setResult(delivery)
   }
 
   const statusVariantStyles = {
@@ -200,10 +79,11 @@ export default function TrackingPage() {
             src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=1920&q=80"
             alt="Logistics tracking"
             fill
+            sizes="100vw"
             className="object-cover opacity-20 brightness-[0.8] dark:brightness-[0.4]"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/80 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-background via-background/80 to-transparent" />
         </div>
         <div className="relative z-10 mx-auto w-full max-w-7xl px-6 py-16">
           <div className="max-w-2xl">
@@ -211,8 +91,8 @@ export default function TrackingPage() {
               Track Your Shipment
             </h1>
             <p className="text-base leading-relaxed font-light text-muted-foreground">
-              Enter your tracking number to see real-time location, estimated
-              delivery, and full transit history across all global carriers.
+              Enter your tracking number to see real-time location and full
+              transit history for your shipment.
             </p>
           </div>
         </div>
@@ -229,32 +109,21 @@ export default function TrackingPage() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleTrack()}
-                placeholder="Enter tracking number (e.g., LYB-7843291)"
+                placeholder="Enter tracking number (e.g., LYFT-AB12CD34)"
                 className="h-10 w-full border-0 bg-transparent p-0 text-base text-foreground placeholder:text-muted-foreground/70 focus:ring-0 focus:outline-none"
               />
             </div>
             <button
               onClick={handleTrack}
+              disabled={trackMutation.isPending}
               className="inline-flex h-10 items-center justify-center rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none"
             >
-              Track
+              {trackMutation.isPending ? "Tracking..." : "Track"}
             </button>
           </div>
 
-          <div className="mt-3 flex justify-center gap-3 text-xs text-muted-foreground/80">
-            <span>Try:</span>
-            {["LYB-7843291", "LYB-9921047", "LYB-5567823"].map((id) => (
-              <button
-                key={id}
-                onClick={() => {
-                  setQuery(id)
-                  setSearched(false)
-                }}
-                className="font-mono underline underline-offset-2 transition-colors hover:text-foreground"
-              >
-                {id}
-              </button>
-            ))}
+          <div className="mt-3 text-center text-xs text-muted-foreground/80">
+            Tracking codes are case-insensitive.
           </div>
         </div>
 
@@ -266,8 +135,8 @@ export default function TrackingPage() {
               Shipment Not Found
             </h3>
             <p className="mx-auto max-w-sm text-sm leading-normal font-light text-muted-foreground">
-              We couldn't locate a shipment with that identifier. Verify the
-              code or contact your logistics representative.
+              We couldn&apos;t locate a shipment with that identifier. Verify
+              the code or contact your logistics representative.
             </p>
           </div>
         )}
@@ -298,13 +167,15 @@ export default function TrackingPage() {
                       Estimated Arrival
                     </div>
                     <div className="mt-0.5 text-sm font-semibold text-foreground">
-                      {result.eta}
+                      {result.receivedAt
+                        ? `Delivered ${new Date(result.receivedAt).toLocaleDateString()}`
+                        : "On the way"}
                     </div>
                   </div>
                   <div
                     className={cn(
                       "rounded-full border px-3 py-1 text-xs font-semibold tracking-tight shadow-sm",
-                      statusVariantStyles[result.statusVariant]
+                      statusVariantStyles[statusVariant(result.status)]
                     )}
                   >
                     {result.status}
@@ -315,10 +186,16 @@ export default function TrackingPage() {
               {/* Grid Specifications */}
               <div className="grid grid-cols-2 gap-x-4 gap-y-6 border-b border-border p-6 sm:grid-cols-4">
                 {[
-                  { label: "Transit Mode", value: result.mode },
-                  { label: "Total Weight / Volume", value: result.weight },
-                  { label: "Origin Station", value: result.origin },
-                  { label: "Destination Hub", value: result.destination },
+                  { label: "Tracking Number", value: result.trackingNumber },
+                  { label: "Current Status", value: result.status },
+                  {
+                    label: "Last Known Location",
+                    value: result.lastKnownLocation ?? "No updates yet",
+                  },
+                  {
+                    label: "Recorded Checkpoints",
+                    value: String(result.locationCount),
+                  },
                 ].map((item, idx) => (
                   <div key={idx} className="space-y-1">
                     <div className="text-[11px] font-semibold tracking-wider text-muted-foreground uppercase">
@@ -334,10 +211,10 @@ export default function TrackingPage() {
               {/* Progress Horizontal Tracker */}
               <div className="border-b border-border bg-muted/10 p-6">
                 <div className="relative pt-2 pb-6">
-                  <div className="absolute top-[22px] right-0 left-0 h-1 rounded-full bg-secondary" />
+                  <div className="absolute top-5.5 right-0 left-0 h-1 rounded-full bg-secondary" />
                   <div
-                    className="absolute top-[22px] left-0 h-1 rounded-full bg-primary transition-all duration-500"
-                    style={{ width: `${result.progress}%` }}
+                    className="absolute top-5.5 left-0 h-1 rounded-full bg-primary transition-all duration-500"
+                    style={{ width: `${deliveryProgress(result.status)}%` }}
                   />
                   <div className="relative flex w-full justify-between">
                     {[
@@ -348,11 +225,12 @@ export default function TrackingPage() {
                       "Delivered",
                     ].map((step, i) => {
                       const stepProgress = (i / 4) * 100
-                      const isActive = result.progress >= stepProgress
+                      const isActive =
+                        deliveryProgress(result.status) >= stepProgress
                       return (
                         <div
                           key={step}
-                          className="group relative flex min-w-[60px] flex-col items-center"
+                          className="group relative flex min-w-15 flex-col items-center"
                         >
                           <div
                             className={cn(
@@ -384,49 +262,65 @@ export default function TrackingPage() {
                 <h3 className="mb-6 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                   Shipment Activity Log
                 </h3>
-                <div className="relative space-y-6 pl-2">
-                  {result.history.map((event, i) => (
-                    <div key={i} className="group flex gap-4">
-                      <div className="flex shrink-0 flex-col items-center">
-                        <div
-                          className={cn(
-                            "z-10 flex h-7 w-7 items-center justify-center rounded-full border bg-background shadow-sm",
-                            event.completed
-                              ? "border-primary/30 text-primary"
-                              : "border-border text-muted-foreground/60"
-                          )}
-                        >
-                          {event.completed ? (
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                          ) : (
-                            <Clock className="h-3.5 w-3.5" />
+                {result.locations.length > 0 ? (
+                  <div className="relative space-y-6 pl-2">
+                    {result.locations.map((event, i) => (
+                      <div key={i} className="group flex gap-4">
+                        <div className="flex shrink-0 flex-col items-center">
+                          <div
+                            className={cn(
+                              "z-10 flex h-7 w-7 items-center justify-center rounded-full border bg-background shadow-sm",
+                              event.reachedAt
+                                ? "border-primary/30 text-primary"
+                                : "border-border text-muted-foreground/60"
+                            )}
+                          >
+                            {event.reachedAt ? (
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            ) : (
+                              <Clock className="h-3.5 w-3.5" />
+                            )}
+                          </div>
+                          {i < result.locations.length - 1 && (
+                            <div className="mt-2 -mb-2 w-px flex-1 bg-border" />
                           )}
                         </div>
-                        {i < result.history.length - 1 && (
-                          <div className="mt-2 -mb-2 w-px flex-1 bg-border" />
-                        )}
+                        <div className="pb-4">
+                          <div
+                            className={cn(
+                              "text-sm tracking-tight",
+                              event.reachedAt
+                                ? "font-semibold text-foreground"
+                                : "font-medium text-muted-foreground"
+                            )}
+                          >
+                            Checkpoint {event.sequence}
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 text-xs font-light text-muted-foreground/80">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            <span>{event.fullAddress}</span>
+                            <span className="text-border">•</span>
+                            <span>
+                              {event.reachedAt
+                                ? new Date(event.reachedAt).toLocaleString()
+                                : "time not set"}
+                            </span>
+                          </div>
+                          {event.transitNote ? (
+                            <p className="mt-1 text-xs text-muted-foreground">
+                              {event.transitNote}
+                            </p>
+                          ) : null}
+                        </div>
                       </div>
-                      <div className="pb-4">
-                        <div
-                          className={cn(
-                            "text-sm tracking-tight",
-                            event.completed
-                              ? "font-semibold text-foreground"
-                              : "font-medium text-muted-foreground"
-                          )}
-                        >
-                          {event.event}
-                        </div>
-                        <div className="mt-1 flex items-center gap-2 text-xs font-light text-muted-foreground/80">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span>{event.location}</span>
-                          <span className="text-border">•</span>
-                          <span>{event.time}</span>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No location checkpoints have been added for this shipment
+                    yet.
+                  </p>
+                )}
               </div>
 
               {/* Route Summary Footer */}
@@ -437,10 +331,10 @@ export default function TrackingPage() {
                       Departed
                     </div>
                     <div className="font-semibold tracking-tight">
-                      {result.origin}
+                      {result.pickup}
                     </div>
                   </div>
-                  <div className="mx-4 flex max-w-[200px] flex-1 items-center">
+                  <div className="mx-4 flex max-w-50 flex-1 items-center">
                     <div className="h-px flex-1 border-dashed bg-border" />
                     <Truck className="mx-2.5 h-4 w-4 text-muted-foreground/70" />
                     <div className="h-px flex-1 border-dashed bg-border" />
@@ -450,7 +344,7 @@ export default function TrackingPage() {
                       Destination
                     </div>
                     <div className="font-semibold tracking-tight">
-                      {result.destination}
+                      {result.dropoff}
                     </div>
                   </div>
                 </div>

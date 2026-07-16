@@ -25,6 +25,7 @@ export default function ServicesPage() {
             src="https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=1920&q=80"
             alt="Container ship at port"
             fill
+            sizes="100vw"
             className="object-cover opacity-15 brightness-[0.8] dark:brightness-[0.4]"
             priority
           />
@@ -59,6 +60,7 @@ export default function ServicesPage() {
               src="https://images.unsplash.com/photo-1586528116311-ad8dd3c8310d?w=800&q=80"
               alt="Smart logistics warehouse"
               fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
@@ -189,6 +191,7 @@ export default function ServicesPage() {
               src="https://images.unsplash.com/photo-1494412574643-ff11b0a5c1c3?w=800&q=80"
               alt="Global freight shipping"
               fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
@@ -212,6 +215,7 @@ export default function ServicesPage() {
               src="https://images.unsplash.com/photo-1616401784845-180882ba9ba8?w=800&q=80"
               alt="Express courier delivery"
               fill
+              sizes="(max-width: 1024px) 100vw, 50vw"
               className="object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />

@@ -1,15 +1,18 @@
-import { Geist, Geist_Mono, Roboto, Oxanium } from "next/font/google"
+import { Geist_Mono, Roboto, Oxanium } from "next/font/google"
 
 import "./globals.css"
+import { QueryProvider } from "@/components/providers/QueryProvider"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
-import { Metadata } from "next/dist/lib/metadata/types/metadata-interface";
-import { Footer } from "@/components/layout/Footer";
-import { Navbar } from "@/components/layout/Header";
+import { Toaster } from "@/components/ui/sonner"
+import { cn } from "@/lib/utils"
+import { Metadata } from "next/dist/lib/metadata/types/metadata-interface"
 
-const oxaniumHeading = Oxanium({subsets:['latin'],variable:'--font-heading'});
+const oxaniumHeading = Oxanium({
+  subsets: ["latin"],
+  variable: "--font-heading",
+})
 
-const roboto = Roboto({subsets:['latin'],variable:'--font-sans'})
+const roboto = Roboto({ subsets: ["latin"], variable: "--font-sans" })
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
@@ -40,16 +43,19 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          disableTransitionOnChange={false}
-        >
-          <div className="relative flex min-h-screen flex-col">
+        <QueryProvider>
+          <ThemeProvider
+            attribute="class"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+          >
+            <div className="relative flex min-h-screen w-screen flex-col">
               {children}
-          </div>
-        </ThemeProvider>
+            </div>
+            <Toaster richColors />
+          </ThemeProvider>
+        </QueryProvider>
       </body>
     </html>
   )
