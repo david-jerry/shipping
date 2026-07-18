@@ -8,6 +8,7 @@ import {
     ilike,
     inArray,
     or,
+    sql,
 } from "drizzle-orm"
 import { headers } from "next/headers"
 import { hashPassword } from "better-auth/crypto"
@@ -18,14 +19,16 @@ import {
     type AdminUserDetails,
     type AdminUsersListData,
     type AdminUserSummary,
-} from "@/lib/admin-users"
+} from "@/types"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
+import { renderMarketingEmailTemplate } from "@/lib/email-template-react"
 import { sendEmail } from "@/lib/messaging"
 
 type GetAdminUsersInput = {
     query?: string
-    limit?: number
+    page?: number
+    pageSize?: number
 }
 
 type GetAdminUserDetailsInput = {
@@ -127,8 +130,19 @@ export async function getAdminUsersDataAction(
 ): Promise<AdminUsersListData> {
     await requireAdminUserId()
 
-    const safeLimit = Math.min(Math.max(input.limit ?? 100, 1), 300)
+    const pageSize = Math.min(Math.max(input.pageSize ?? 20, 1), 100)
+    const requestedPage = Math.max(input.page ?? 1, 1)
     const normalizedQuery = input.query?.trim()
+
+    const [countRow] = await db
+        .select({ total: sql<number>`count(*)` })
+        .from(user)
+        .where(normalizedQuery ? orLikeUser(normalizedQuery) : undefined)
+
+    const total = Number(countRow?.total ?? 0)
+    const totalPages = Math.max(1, Math.ceil(total / pageSize))
+    const page = Math.min(requestedPage, totalPages)
+    const offset = (page - 1) * pageSize
 
     const users = await db
         .select({
@@ -141,10 +155,19 @@ export async function getAdminUsersDataAction(
         .from(user)
         .where(normalizedQuery ? orLikeUser(normalizedQuery) : undefined)
         .orderBy(desc(user.createdAt))
-        .limit(safeLimit)
+        .limit(pageSize)
+        .offset(offset)
 
     if (users.length === 0) {
-        return { users: [] }
+        return {
+            users: [],
+            pagination: {
+                page,
+                pageSize,
+                total,
+                totalPages,
+            },
+        }
     }
 
     const userIds = users.map((item) => item.id)
@@ -201,6 +224,12 @@ export async function getAdminUsersDataAction(
 
     return {
         users: mappedUsers,
+        pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages,
+        },
     }
 }
 
@@ -581,27 +610,20 @@ export async function sendPromotionalBulkEmailAction(
     }
 
     const results = await Promise.allSettled(
-        recipients.map((recipient) => {
-            const greeting = recipient.name ? `Hi ${recipient.name},` : "Hello,"
-            const discountLine = discountCode
-                ? `<p><strong>Discount code:</strong> ${discountCode}</p>`
-                : ""
-            const ctaLine = ctaUrl
-                ? `<p><a href=\"${ctaUrl}\">Claim your offer</a></p>`
-                : ""
+        recipients.map(async (recipient) => {
+            const rendered = await renderMarketingEmailTemplate({
+                subject,
+                recipientName: recipient.name,
+                messageText: message,
+                discountCode,
+                ctaUrl,
+            })
 
             return sendEmail({
                 to: recipient.email,
-                subject,
-                html: `<p>${greeting}</p><p>${message}</p>${discountLine}${ctaLine}`,
-                text: [
-                    greeting,
-                    message,
-                    discountCode ? `Discount code: ${discountCode}` : "",
-                    ctaUrl ? `Claim your offer: ${ctaUrl}` : "",
-                ]
-                    .filter(Boolean)
-                    .join("\n\n"),
+                subject: rendered.subject,
+                html: rendered.htmlBody,
+                text: rendered.textBody,
             })
         })
     )

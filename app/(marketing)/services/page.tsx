@@ -1,5 +1,7 @@
+import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
+import { buildMarketingMetadata } from "@/lib/seo"
 import {
   Route,
   Globe,
@@ -14,6 +16,21 @@ import {
   Thermometer,
   FileText,
 } from "lucide-react"
+
+export const metadata: Metadata = buildMarketingMetadata({
+  title: "Logistics Services | Ocean, Air, Ground, and Warehousing",
+  description:
+    "Explore Lyftberan logistics services including ocean freight, air cargo, ground transport, customs clearance, and warehousing.",
+  path: "/services",
+  keywords: [
+    "logistics services",
+    "ocean freight",
+    "air freight",
+    "ground shipping",
+    "customs clearance",
+    "warehousing",
+  ],
+})
 
 export default function ServicesPage() {
   return (

@@ -2,30 +2,14 @@ import { eq } from "drizzle-orm";
 
 import { emailTemplates } from "@/drizzle/schema/email-templates";
 import { db } from "@/lib/db";
+import { renderDefaultEmailTemplate } from "@/lib/email-template-react";
 
 export type EmailTemplateKey = "register_verification" | "password_reset";
 
-type EmailTemplateData = {
+export type EmailTemplateData = {
     subject: string;
     htmlBody: string;
     textBody: string;
-};
-
-const defaultTemplates: Record<EmailTemplateKey, EmailTemplateData> = {
-    register_verification: {
-        subject: "Verify your Lyftberan account",
-        htmlBody:
-            "<h2>Welcome to Lyftberan</h2><p>Hi {{name}},</p><p>Please verify your email by clicking the link below:</p><p><a href=\"{{url}}\">Verify Email</a></p><p>If you did not create this account, you can safely ignore this email.</p>",
-        textBody:
-            "Welcome to Lyftberan\n\nHi {{name}},\n\nPlease verify your email by opening this link: {{url}}\n\nIf you did not create this account, ignore this email.",
-    },
-    password_reset: {
-        subject: "Reset your Lyftberan password",
-        htmlBody:
-            "<h2>Password Reset</h2><p>Hi {{name}},</p><p>You can reset your password from the link below:</p><p><a href=\"{{url}}\">Reset Password</a></p><p>If this wasn't you, please ignore this email.</p>",
-        textBody:
-            "Password Reset\n\nHi {{name}},\n\nUse this link to reset your password: {{url}}\n\nIf this wasn't you, please ignore this email.",
-    },
 };
 
 function fillTemplate(template: string, values: Record<string, string>) {
@@ -39,6 +23,8 @@ export async function getEmailTemplate(
     key: EmailTemplateKey,
     values: Record<string, string>,
 ): Promise<EmailTemplateData> {
+    const defaultTemplate = await renderDefaultEmailTemplate(key, values);
+
     try {
         const rows = await db
             .select({
@@ -50,7 +36,11 @@ export async function getEmailTemplate(
             .where(eq(emailTemplates.templateType, key))
             .limit(1);
 
-        const template = rows[0] ?? defaultTemplates[key];
+        const template = rows[0];
+
+        if (!template) {
+            return defaultTemplate;
+        }
 
         return {
             subject: fillTemplate(template.subject, values),
@@ -58,11 +48,6 @@ export async function getEmailTemplate(
             textBody: fillTemplate(template.textBody, values),
         };
     } catch {
-        const fallback = defaultTemplates[key];
-        return {
-            subject: fillTemplate(fallback.subject, values),
-            htmlBody: fillTemplate(fallback.htmlBody, values),
-            textBody: fillTemplate(fallback.textBody, values),
-        };
+        return defaultTemplate;
     }
 }

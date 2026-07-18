@@ -1,76 +1,9 @@
-export type DeliveryDbStatus =
-    | "pending"
-    | "assigned"
-    | "in_transit"
-    | "delivered"
-    | "failed"
-    | "cancelled"
-
-export type DeliveryRow = {
-    id: string
-    trackingNumber: string
-    status: "Pending" | "Assigned" | "In Transit" | "Delivered" | "Failed" | "Cancelled"
-    pickup: string
-    dropoff: string
-    lastKnownLocation: string | null
-    locationCount: number
-    locations: DeliveryLocationRow[]
-    receivedAt: string | null
-    updatedAt: string
-}
-
-export type DeliveryLocationRow = {
-    id: string
-    sequence: number
-    streetAddress: string
-    country: string
-    fullAddress: string
-    transitNote: string | null
-    reachedAt: string | null
-    isCurrentLocation: boolean
-}
-
-export type DeliveryStats = {
-    total: number
-    inTransit: number
-    pending: number
-    delivered: number
-}
-
-export type AccountOverviewData = {
-    stats: DeliveryStats
-    deliveries: DeliveryRow[]
-    searchedDelivery: DeliveryRow | null
-}
-
-export type AdminDeliveriesTrendPoint = {
-    date: string
-    pending: number
-    inTransit: number
-    delivered: number
-}
-
-export type AdminDashboardStats = DeliveryStats & {
-    failed: number
-    cancelled: number
-}
-
-export type AdminDashboardData = {
-    stats: AdminDashboardStats
-    deliveries: DeliveryRow[]
-    trend: AdminDeliveriesTrendPoint[]
-}
-
-export type AdminDeliveryTableFilters = {
-    status: DeliveryDbStatus | "all"
-    trackingCode?: string
-    dateRange: "7d" | "30d" | "90d" | "all"
-    limit?: number
-}
-
-export type AdminDeliveryTableData = {
-    deliveries: DeliveryRow[]
-}
+import type {
+    DeliveryDbStatus,
+    DeliveryLocationRow,
+    DeliveryRow,
+    DeliveryStats,
+} from "@/types"
 
 export const calculateDeliveryStats = (rows: DeliveryRow[]): DeliveryStats => ({
     total: rows.length,
@@ -98,7 +31,7 @@ export const mapDeliveryStatus = (status: DeliveryDbStatus): DeliveryRow["status
     }
 }
 
-type DeliveryRecordInput = {
+export const toDeliveryRow = (record: {
     id: string
     trackingNumber: string
     status: DeliveryDbStatus
@@ -109,9 +42,7 @@ type DeliveryRecordInput = {
     locations?: DeliveryLocationRow[]
     deliveredAt: Date | null
     updatedAt: Date
-}
-
-export const toDeliveryRow = (record: DeliveryRecordInput): DeliveryRow => ({
+}): DeliveryRow => ({
     id: record.id,
     trackingNumber: record.trackingNumber,
     status: mapDeliveryStatus(record.status),

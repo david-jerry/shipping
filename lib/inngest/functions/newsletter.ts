@@ -6,9 +6,9 @@ import {
     newsletterSubscribers,
 } from "@/drizzle/schema/newsletter"
 import { db } from "@/lib/db"
+import { renderMarketingEmailTemplate } from "@/lib/email-template-react"
 import { inngest } from "@/lib/inngest/client"
 import { sendEmail } from "@/lib/messaging"
-import { buildNewsletterEmailHtml, buildNewsletterEmailText } from "@/lib/newsletter-email"
 
 type NewsletterCampaignSendEvent = {
     data: {
@@ -85,26 +85,22 @@ export const newsletterCampaignSendFunction = inngest.createFunction(
 
         const results = await step.run("send-bulk-newsletter", async () => {
             return Promise.allSettled(
-                typedSubscribers.map((subscriber) =>
-                    sendEmail({
-                        to: subscriber.email,
+                typedSubscribers.map(async (subscriber) => {
+                    const rendered = await renderMarketingEmailTemplate({
                         subject: campaign.subject,
-                        html: buildNewsletterEmailHtml({
-                            recipientName: subscriber.name,
-                            subject: campaign.subject,
-                            messageHtml: campaign.body,
-                            discountCode: campaign.discountCode,
-                            ctaUrl: campaign.ctaUrl,
-                        }),
-                        text: buildNewsletterEmailText({
-                            recipientName: subscriber.name,
-                            subject: campaign.subject,
-                            messageHtml: campaign.body,
-                            discountCode: campaign.discountCode,
-                            ctaUrl: campaign.ctaUrl,
-                        }),
+                        recipientName: subscriber.name,
+                        messageHtml: campaign.body,
+                        discountCode: campaign.discountCode,
+                        ctaUrl: campaign.ctaUrl,
                     })
-                )
+
+                    return sendEmail({
+                        to: subscriber.email,
+                        subject: rendered.subject,
+                        html: rendered.htmlBody,
+                        text: rendered.textBody,
+                    })
+                })
             )
         })
 

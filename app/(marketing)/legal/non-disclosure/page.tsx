@@ -1,3 +1,15 @@
+/* eslint-disable react/no-unescaped-entities */
+
+import type { Metadata } from "next"
+import { buildMarketingMetadata } from "@/lib/seo"
+
+export const metadata: Metadata = buildMarketingMetadata({
+  title: "Non-Disclosure Agreement | Lyftberan",
+  description:
+    "Read Lyftberan's mutual NDA terms covering confidential information, obligations, exclusions, and legal remedies.",
+  path: "/legal/non-disclosure",
+})
+
 export default function NDAPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-16">

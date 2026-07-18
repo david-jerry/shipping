@@ -1,6 +1,8 @@
+import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
 import { AnimatedStat } from "@/components/layout/AnimatedStat"
+import { buildMarketingMetadata } from "@/lib/seo"
 import {
   CheckCircle2,
   Zap,
@@ -15,6 +17,19 @@ import {
   Plane,
   Ship,
 } from "lucide-react"
+
+export const metadata: Metadata = buildMarketingMetadata({
+  title: "About Lyftberan | Logistics Leadership and Mission",
+  description:
+    "Learn about Lyftberan's mission, milestones, leadership team, and global logistics platform performance.",
+  path: "/about",
+  keywords: [
+    "about lyftberan",
+    "logistics company",
+    "supply chain technology",
+    "freight platform",
+  ],
+})
 
 export default function AboutPage() {
   const milestones = [

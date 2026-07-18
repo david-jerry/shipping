@@ -1,3 +1,13 @@
+import type { Metadata } from "next"
+import { buildMarketingMetadata } from "@/lib/seo"
+
+export const metadata: Metadata = buildMarketingMetadata({
+  title: "Refund Policy | Lyftberan",
+  description:
+    "Review Lyftberan refund eligibility, claim process, non-refundable scenarios, and resolution timelines.",
+  path: "/legal/refunds",
+})
+
 export default function RefundsPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-16">

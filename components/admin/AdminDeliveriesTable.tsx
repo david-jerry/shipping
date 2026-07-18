@@ -54,14 +54,18 @@ import {
   type AdminDeliveryTableFilters,
   type DeliveryDbStatus,
   type DeliveryLocationRow,
+  type PaginationMeta,
   type DeliveryRow,
-} from "@/lib/deliveries"
+} from "@/types"
 import { Textarea } from "@/components/ui/textarea"
 
 type AdminDeliveriesTableProps = {
   deliveries: DeliveryRow[]
+  pagination: PaginationMeta
   filters: AdminDeliveryTableFilters
   onFiltersChange: (filters: AdminDeliveryTableFilters) => void
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
   isLoading: boolean
   isFetching: boolean
   openCreateOnLoad?: boolean
@@ -157,8 +161,11 @@ function useDebouncedValue(value: string, delayMs: number) {
 
 export function AdminDeliveriesTable({
   deliveries,
+  pagination,
   filters,
   onFiltersChange,
+  onPageChange,
+  onPageSizeChange,
   isLoading,
   isFetching,
   openCreateOnLoad,
@@ -172,6 +179,13 @@ export function AdminDeliveriesTable({
   )
   const [editingLocation, setEditingLocation] =
     useState<DeliveryLocationRow | null>(null)
+
+  const updateFilters = (nextFilters: AdminDeliveryTableFilters) => {
+    onFiltersChange({
+      ...nextFilters,
+      page: 1,
+    })
+  }
 
   const createForm = useForm<CreateDeliveryFormValues>({
     resolver: zodResolver(createDeliveryFormSchema),
@@ -481,7 +495,7 @@ export function AdminDeliveriesTable({
         <Input
           value={filters.trackingCode ?? ""}
           onChange={(event) =>
-            onFiltersChange({
+            updateFilters({
               ...filters,
               trackingCode: event.target.value,
             })
@@ -493,7 +507,7 @@ export function AdminDeliveriesTable({
         <Select
           value={filters.status}
           onValueChange={(value) =>
-            onFiltersChange({
+            updateFilters({
               ...filters,
               status: value as AdminDeliveryTableFilters["status"],
             })
@@ -516,7 +530,7 @@ export function AdminDeliveriesTable({
         <Select
           value={filters.dateRange}
           onValueChange={(value) =>
-            onFiltersChange({
+            updateFilters({
               ...filters,
               dateRange: value as AdminDeliveryTableFilters["dateRange"],
             })
@@ -807,94 +821,142 @@ export function AdminDeliveriesTable({
           Loading deliveries...
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border border-border">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Tracking</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Pickup</TableHead>
-                <TableHead>Dropoff</TableHead>
-                <TableHead>Last Known Location</TableHead>
-                <TableHead>Checkpoints</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {deliveries.length > 0 ? (
-                deliveries.map((delivery) => (
-                  <TableRow key={delivery.id}>
-                    <TableCell className="font-medium">
-                      {delivery.trackingNumber}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        className={statusTone(delivery.status)}
-                        variant="outline"
-                      >
-                        {delivery.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{delivery.pickup}</TableCell>
-                    <TableCell>{delivery.dropoff}</TableCell>
-                    <TableCell>
-                      {delivery.lastKnownLocation ?? "No location updates"}
-                    </TableCell>
-                    <TableCell>{delivery.locationCount}</TableCell>
-                    <TableCell>
-                      {new Date(delivery.updatedAt).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="inline-flex items-center gap-2">
-                        <Button
-                          type="button"
-                          size="sm"
+        <>
+          <div className="overflow-hidden rounded-lg border border-border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Tracking</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Pickup</TableHead>
+                  <TableHead>Dropoff</TableHead>
+                  <TableHead>Last Known Location</TableHead>
+                  <TableHead>Checkpoints</TableHead>
+                  <TableHead>Updated</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {deliveries.length > 0 ? (
+                  deliveries.map((delivery) => (
+                    <TableRow key={delivery.id}>
+                      <TableCell className="font-medium">
+                        {delivery.trackingNumber}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          className={statusTone(delivery.status)}
                           variant="outline"
-                          onClick={() => {
-                            editForm.reset({
-                              deliveryId: delivery.id,
-                              status: deliveryStatusToDbStatus(delivery.status),
-                              pickupAddress: delivery.pickup,
-                              dropoffAddress: delivery.dropoff,
-                              notes: "",
-                            })
-                            setEditingDelivery(delivery)
-                          }}
                         >
-                          Update
-                        </Button>
+                          {delivery.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{delivery.pickup}</TableCell>
+                      <TableCell>{delivery.dropoff}</TableCell>
+                      <TableCell>
+                        {delivery.lastKnownLocation ?? "No location updates"}
+                      </TableCell>
+                      <TableCell>{delivery.locationCount}</TableCell>
+                      <TableCell>
+                        {new Date(delivery.updatedAt).toLocaleDateString()}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="inline-flex items-center gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              editForm.reset({
+                                deliveryId: delivery.id,
+                                status: deliveryStatusToDbStatus(
+                                  delivery.status
+                                ),
+                                pickupAddress: delivery.pickup,
+                                dropoffAddress: delivery.dropoff,
+                                notes: "",
+                              })
+                              setEditingDelivery(delivery)
+                            }}
+                          >
+                            Update
+                          </Button>
 
-                        <Button
-                          type="button"
-                          size="sm"
-                          variant="destructive"
-                          disabled={deleteMutation.isPending}
-                          onClick={async () => {
-                            await deleteMutation.mutateAsync({
-                              deliveryId: delivery.id,
-                            })
-                          }}
-                        >
-                          Delete
-                        </Button>
-                      </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="destructive"
+                            disabled={deleteMutation.isPending}
+                            onClick={async () => {
+                              await deleteMutation.mutateAsync({
+                                deliveryId: delivery.id,
+                              })
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={8}
+                      className="text-center text-muted-foreground"
+                    >
+                      No deliveries matched the selected filters.
                     </TableCell>
                   </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell
-                    colSpan={8}
-                    className="text-center text-muted-foreground"
-                  >
-                    No deliveries matched the selected filters.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="flex flex-col gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              Showing page {pagination.page} of {pagination.totalPages} (
+              {pagination.total} total)
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="admin-deliveries-page-size">Rows</label>
+              <select
+                id="admin-deliveries-page-size"
+                className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                value={pagination.pageSize}
+                onChange={(event) =>
+                  onPageSizeChange(Number(event.target.value))
+                }
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pagination.page <= 1}
+                onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
+              >
+                Prev
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() =>
+                  onPageChange(
+                    Math.min(pagination.totalPages, pagination.page + 1)
+                  )
+                }
+              >
+                Next
+              </Button>
+            </div>
+          </div>
+        </>
       )}
 
       {isFetching && !isLoading ? (

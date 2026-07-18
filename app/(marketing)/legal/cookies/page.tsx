@@ -1,3 +1,13 @@
+import type { Metadata } from "next"
+import { buildMarketingMetadata } from "@/lib/seo"
+
+export const metadata: Metadata = buildMarketingMetadata({
+  title: "Cookie Policy | Lyftberan",
+  description:
+    "Learn how Lyftberan uses cookies and similar technologies for essential, functional, analytics, and marketing purposes.",
+  path: "/legal/cookies",
+})
+
 export default function CookiesPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-16">

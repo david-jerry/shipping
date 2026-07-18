@@ -13,7 +13,7 @@ import {
   AlertCircle,
 } from "lucide-react"
 import { trackDeliveryByCodeAction } from "@/app/actions/deliveries"
-import { type DeliveryRow } from "@/lib/deliveries"
+import { type DeliveryRow } from "@/types"
 import { cn } from "@/lib/utils"
 
 function deliveryProgress(status: DeliveryRow["status"]) {

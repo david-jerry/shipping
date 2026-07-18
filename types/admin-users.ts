@@ -12,6 +12,12 @@ export type AdminUserSummary = {
 
 export type AdminUsersListData = {
     users: AdminUserSummary[]
+    pagination: {
+        page: number
+        pageSize: number
+        total: number
+        totalPages: number
+    }
 }
 
 export type AdminUserSession = {

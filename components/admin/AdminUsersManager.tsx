@@ -74,6 +74,8 @@ export function AdminUsersManager({
   const [newUserRoles, setNewUserRoles] = useState("")
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [draftRoles, setDraftRoles] = useState<string[]>([])
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
 
   const promoForm = useForm<PromotionalEmailFormValues>({
     resolver: zodResolver(promotionalEmailSchema),
@@ -90,11 +92,13 @@ export function AdminUsersManager({
   const normalizedSearch = useMemo(() => search.trim(), [search])
 
   const { data, isPending, isFetching } = useQuery({
-    queryKey: ["admin", "users", normalizedSearch],
-    queryFn: () => getAdminUsersDataAction({ query: normalizedSearch }),
-    staleTime: 1_000,
-    refetchInterval: 3_000,
-    refetchOnWindowFocus: true,
+    queryKey: ["admin", "users", normalizedSearch, page, pageSize],
+    queryFn: () =>
+      getAdminUsersDataAction({
+        query: normalizedSearch,
+        page,
+        pageSize,
+      }),
   })
 
   const {
@@ -191,6 +195,12 @@ export function AdminUsersManager({
   })
 
   const users = data?.users ?? []
+  const pagination = data?.pagination ?? {
+    page,
+    pageSize,
+    total: 0,
+    totalPages: 1,
+  }
 
   return (
     <div className="space-y-3 rounded-xl border border-border bg-card p-4">
@@ -246,7 +256,10 @@ export function AdminUsersManager({
         <div className="flex items-center gap-2">
           <Input
             value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            onChange={(event) => {
+              setSearch(event.target.value)
+              setPage(1)
+            }}
             placeholder="Search users by name or email"
             className="max-w-xs"
           />
@@ -603,6 +616,49 @@ export function AdminUsersManager({
               )}
             </TableBody>
           </Table>
+
+          <div className="flex flex-col gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              Showing page {pagination.page} of {pagination.totalPages} (
+              {pagination.total} total)
+            </div>
+            <div className="flex items-center gap-2">
+              <label htmlFor="admin-users-page-size">Rows</label>
+              <select
+                id="admin-users-page-size"
+                className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+                value={pagination.pageSize}
+                onChange={(event) => {
+                  setPageSize(Number(event.target.value))
+                  setPage(1)
+                }}
+              >
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pagination.page <= 1}
+                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+              >
+                Prev
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={pagination.page >= pagination.totalPages}
+                onClick={() =>
+                  setPage((prev) => Math.min(pagination.totalPages, prev + 1))
+                }
+              >
+                Next
+              </Button>
+            </div>
+          </div>
         </div>
       )}
 

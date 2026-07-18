@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/card"
 import { HugeiconsIcon } from "@hugeicons/react"
 import { ChartUpIcon, ChartDownIcon } from "@hugeicons/core-free-icons"
-import { type AdminDashboardStats } from "@/lib/deliveries"
+import { type AdminDashboardStats } from "@/types"
 
 type SectionCardsProps = {
   stats?: AdminDashboardStats

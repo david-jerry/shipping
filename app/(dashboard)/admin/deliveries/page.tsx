@@ -9,7 +9,7 @@ import { AdminDeliveriesTable } from "@/components/admin/AdminDeliveriesTable"
 import { AppSidebar } from "@/components/app-sidebar"
 import { SiteHeader } from "@/components/site-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
-import { type AdminDeliveryTableFilters } from "@/lib/deliveries"
+import { type AdminDeliveryTableFilters } from "@/types"
 
 export default function AdminDeliveriesPage() {
   const searchParams = useSearchParams()
@@ -17,7 +17,8 @@ export default function AdminDeliveriesPage() {
     status: "all",
     dateRange: "30d",
     trackingCode: "",
-    limit: 50,
+    page: 1,
+    pageSize: 20,
   })
 
   const normalizedTrackingCode = useMemo(
@@ -38,16 +39,14 @@ export default function AdminDeliveriesPage() {
       filters.status,
       filters.dateRange,
       normalizedTrackingCode,
-      filters.limit,
+      filters.page,
+      filters.pageSize,
     ],
     queryFn: () =>
       getAdminDeliveriesTableDataAction({
         ...filters,
         trackingCode: normalizedTrackingCode,
       }),
-    staleTime: 1_000,
-    refetchInterval: 3_000,
-    refetchOnWindowFocus: true,
   })
 
   return (
@@ -79,8 +78,24 @@ export default function AdminDeliveriesPage() {
               <div className="px-4 lg:px-6">
                 <AdminDeliveriesTable
                   deliveries={filteredDeliveries?.deliveries ?? []}
+                  pagination={
+                    filteredDeliveries?.pagination ?? {
+                      page: filters.page ?? 1,
+                      pageSize: filters.pageSize ?? 20,
+                      total: 0,
+                      totalPages: 1,
+                    }
+                  }
                   filters={filters}
-                  onFiltersChange={setFilters}
+                  onFiltersChange={(nextFilters) => {
+                    setFilters(nextFilters)
+                  }}
+                  onPageChange={(page) => {
+                    setFilters((prev) => ({ ...prev, page }))
+                  }}
+                  onPageSizeChange={(pageSize) => {
+                    setFilters((prev) => ({ ...prev, page: 1, pageSize }))
+                  }}
                   isLoading={isTablePending}
                   isFetching={isTableFetching}
                   openCreateOnLoad={shouldOpenCreateDrawer}

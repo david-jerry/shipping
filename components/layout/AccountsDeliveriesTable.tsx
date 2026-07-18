@@ -7,12 +7,15 @@ import {
   useReactTable,
 } from "@tanstack/react-table"
 import { Button } from "@/components/ui/button"
-import { type DeliveryRow } from "@/lib/deliveries"
+import { type DeliveryRow, type PaginationMeta } from "@/types"
 
 const columnHelper = createColumnHelper<DeliveryRow>()
 
 type AccountsDeliveriesTableProps = {
   deliveries: DeliveryRow[]
+  pagination: PaginationMeta
+  onPageChange: (page: number) => void
+  onPageSizeChange: (pageSize: number) => void
   onAdvanceStatus?: (
     deliveryId: string,
     currentStatus: DeliveryRow["status"]
@@ -22,6 +25,9 @@ type AccountsDeliveriesTableProps = {
 
 export function AccountsDeliveriesTable({
   deliveries,
+  pagination,
+  onPageChange,
+  onPageSizeChange,
   onAdvanceStatus,
   updatingDeliveryId,
 }: AccountsDeliveriesTableProps) {
@@ -115,7 +121,7 @@ export function AccountsDeliveriesTable({
   })
 
   return (
-    <div className="overflow-hidden rounded-xl border border-border bg-card">
+    <div className="space-y-3 overflow-hidden rounded-xl border border-border bg-card">
       <table className="w-full text-left text-sm">
         <thead className="bg-muted/60 text-xs tracking-wide text-muted-foreground uppercase">
           {table.getHeaderGroups().map((headerGroup) => (
@@ -156,6 +162,46 @@ export function AccountsDeliveriesTable({
           )}
         </tbody>
       </table>
+
+      <div className="flex flex-col gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          Showing page {pagination.page} of {pagination.totalPages} (
+          {pagination.total} total)
+        </div>
+        <div className="flex items-center gap-2">
+          <label htmlFor="accounts-page-size">Rows</label>
+          <select
+            id="accounts-page-size"
+            className="rounded-md border border-border bg-background px-2 py-1 text-xs"
+            value={pagination.pageSize}
+            onChange={(event) => onPageSizeChange(Number(event.target.value))}
+          >
+            <option value={10}>10</option>
+            <option value={20}>20</option>
+            <option value={50}>50</option>
+          </select>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={pagination.page <= 1}
+            onClick={() => onPageChange(Math.max(1, pagination.page - 1))}
+          >
+            Prev
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={pagination.page >= pagination.totalPages}
+            onClick={() =>
+              onPageChange(Math.min(pagination.totalPages, pagination.page + 1))
+            }
+          >
+            Next
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

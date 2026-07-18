@@ -1,6 +1,6 @@
 "use client"
 
-import { type FormEvent, useEffect, useMemo, useState } from "react"
+import { type FormEvent, useMemo, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { CheckCircle2, Clock, Package, Route } from "lucide-react"
@@ -13,13 +13,13 @@ import {
 import { AccountsDeliveriesTable } from "@/components/layout/AccountsDeliveriesTable"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { calculateDeliveryStats, mapDeliveryStatus } from "@/lib/deliveries"
 import {
-  calculateDeliveryStats,
-  mapDeliveryStatus,
   type AccountOverviewData,
   type DeliveryDbStatus,
+  type PaginationMeta,
   type DeliveryRow,
-} from "@/lib/deliveries"
+} from "@/types"
 
 const emptyOverviewData: AccountOverviewData = {
   stats: {
@@ -30,24 +30,35 @@ const emptyOverviewData: AccountOverviewData = {
   },
   deliveries: [],
   searchedDelivery: null,
+  pagination: {
+    page: 1,
+    pageSize: 20,
+    total: 0,
+    totalPages: 1,
+  },
+}
+
+const accountDefaultPagination: PaginationMeta = {
+  page: 1,
+  pageSize: 20,
+  total: 0,
+  totalPages: 1,
 }
 
 export default function AccountsOverviewPage() {
   const searchParams = useSearchParams()
   const initialTrackingParam = searchParams.get("tracking") ?? ""
+  const normalizedInitialTrackingParam = initialTrackingParam.trim()
 
-  const [trackingCode, setTrackingCode] = useState("")
-  const [submittedCode, setSubmittedCode] = useState<string | null>(null)
+  const [trackingCode, setTrackingCode] = useState(
+    () => normalizedInitialTrackingParam
+  )
+  const [submittedCode, setSubmittedCode] = useState<string | null>(
+    () => normalizedInitialTrackingParam || null
+  )
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(20)
   const queryClient = useQueryClient()
-
-  useEffect(() => {
-    const normalized = initialTrackingParam.trim()
-    if (!normalized) {
-      return
-    }
-    setTrackingCode(normalized)
-    setSubmittedCode(normalized)
-  }, [initialTrackingParam])
 
   const normalizedSubmittedCode = useMemo(
     () => submittedCode?.trim() || "",
@@ -55,14 +66,13 @@ export default function AccountsOverviewPage() {
   )
 
   const { data, isPending, isFetching } = useQuery({
-    queryKey: ["account", "overview", normalizedSubmittedCode],
+    queryKey: ["account", "overview", normalizedSubmittedCode, page, pageSize],
     queryFn: () =>
       getAccountOverviewDataAction({
         trackingCode: normalizedSubmittedCode || undefined,
+        page,
+        pageSize,
       }),
-    staleTime: 1_000,
-    refetchInterval: 3_000,
-    refetchOnWindowFocus: true,
   })
 
   const overviewData = data ?? emptyOverviewData
@@ -80,7 +90,13 @@ export default function AccountsOverviewPage() {
     onMutate: async ({ deliveryId, status }) => {
       await queryClient.cancelQueries({ queryKey: ["account", "overview"] })
 
-      const cacheKey = ["account", "overview", normalizedSubmittedCode] as const
+      const cacheKey = [
+        "account",
+        "overview",
+        normalizedSubmittedCode,
+        page,
+        pageSize,
+      ] as const
 
       const previousData =
         queryClient.getQueryData<AccountOverviewData>(cacheKey)
@@ -170,6 +186,7 @@ export default function AccountsOverviewPage() {
   const handleSearchSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setSubmittedCode(trackingCode)
+    setPage(1)
   }
 
   const handleAdvanceStatus = async (
@@ -320,6 +337,12 @@ export default function AccountsOverviewPage() {
       ) : (
         <AccountsDeliveriesTable
           deliveries={overviewData.deliveries}
+          pagination={data?.pagination ?? accountDefaultPagination}
+          onPageChange={setPage}
+          onPageSizeChange={(nextPageSize) => {
+            setPageSize(nextPageSize)
+            setPage(1)
+          }}
           onAdvanceStatus={handleAdvanceStatus}
           updatingDeliveryId={
             updateDeliveryStatusMutation.isPending

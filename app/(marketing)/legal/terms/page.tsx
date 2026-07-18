@@ -1,4 +1,14 @@
+import type { Metadata } from "next"
+import { buildMarketingMetadata } from "@/lib/seo"
+
 /* eslint-disable react/no-unescaped-entities */
+export const metadata: Metadata = buildMarketingMetadata({
+  title: "Terms of Service | Lyftberan",
+  description:
+    "Review Lyftberan's terms of service, shipping conditions, liability limits, and platform usage rules.",
+  path: "/legal/terms",
+})
+
 export default function TermsPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-16">

@@ -15,19 +15,23 @@ import {
 } from "@/drizzle/schema/delivery"
 import { roles, userRoles } from "@/drizzle/schema/roles"
 import {
+    toDeliveryRow,
+} from "@/lib/deliveries"
+import {
     type AccountOverviewData,
     type AdminDeliveryTableData,
     type AdminDeliveryTableFilters,
     type AdminDashboardData,
     type DeliveryDbStatus,
     type DeliveryLocationRow,
-    toDeliveryRow,
-} from "@/lib/deliveries"
+} from "@/types"
 import { auth } from "@/lib/auth"
 import { db } from "@/lib/db"
 
 type GetAccountOverviewInput = {
     trackingCode?: string
+    page?: number
+    pageSize?: number
 }
 
 type UpdateDeliveryStatusInput = {
@@ -291,6 +295,8 @@ export async function getAccountOverviewDataAction(
 ): Promise<AccountOverviewData> {
     const userId = await requireUserId()
     const trackingCode = input.trackingCode?.trim()
+    const pageSize = Math.min(Math.max(input.pageSize ?? 20, 1), 100)
+    const requestedPage = Math.max(input.page ?? 1, 1)
 
     const [statsRaw] = await db
         .select({
@@ -304,6 +310,16 @@ export async function getAccountOverviewDataAction(
         })
         .from(deliveries)
         .where(eq(deliveries.userId, userId))
+
+    const [deliveriesCountRow] = await db
+        .select({ total: sql<number>`count(*)` })
+        .from(deliveries)
+        .where(eq(deliveries.userId, userId))
+
+    const total = toNumber(deliveriesCountRow?.total)
+    const totalPages = Math.max(1, Math.ceil(total / pageSize))
+    const page = Math.min(requestedPage, totalPages)
+    const offset = (page - 1) * pageSize
 
     const deliveryRows = await db
         .select({
@@ -320,7 +336,8 @@ export async function getAccountOverviewDataAction(
         .from(deliveries)
         .where(eq(deliveries.userId, userId))
         .orderBy(desc(deliveries.updatedAt))
-        .limit(50)
+        .limit(pageSize)
+        .offset(offset)
 
     const searchedDeliveryRow = trackingCode
         ? await db
@@ -368,6 +385,12 @@ export async function getAccountOverviewDataAction(
                     searchedDeliveryLocations
                 )
                 : null,
+        pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages,
+        },
     }
 }
 
@@ -484,7 +507,8 @@ export async function getAdminDeliveriesTableDataAction(
     await requireAdminUserId()
 
     const normalizedTrackingCode = input.trackingCode?.trim()
-    const safeLimit = Math.min(Math.max(input.limit ?? 50, 1), 200)
+    const pageSize = Math.min(Math.max(input.pageSize ?? 20, 1), 200)
+    const requestedPage = Math.max(input.page ?? 1, 1)
 
     const filters = []
 
@@ -503,6 +527,16 @@ export async function getAdminDeliveriesTableDataAction(
         filters.push(gte(deliveries.updatedAt, dateFrom))
     }
 
+    const [countRow] = await db
+        .select({ total: sql<number>`count(*)` })
+        .from(deliveries)
+        .where(filters.length > 0 ? and(...filters) : undefined)
+
+    const total = toNumber(countRow?.total)
+    const totalPages = Math.max(1, Math.ceil(total / pageSize))
+    const page = Math.min(requestedPage, totalPages)
+    const offset = (page - 1) * pageSize
+
     const rows = await db
         .select({
             id: deliveries.id,
@@ -518,12 +552,19 @@ export async function getAdminDeliveriesTableDataAction(
         .from(deliveries)
         .where(filters.length > 0 ? and(...filters) : undefined)
         .orderBy(desc(deliveries.updatedAt))
-        .limit(safeLimit)
+        .limit(pageSize)
+        .offset(offset)
 
     return {
         deliveries: rows.map((row) =>
             toDeliveryRowFromSummary(row as DeliverySummaryRow)
         ),
+        pagination: {
+            page,
+            pageSize,
+            total,
+            totalPages,
+        },
     }
 }
 

@@ -18,7 +18,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
-import { type AdminDeliveriesTrendPoint } from "@/lib/deliveries"
+import { type AdminDeliveriesTrendPoint } from "@/types"
 
 const chartConfig = {
   pending: {

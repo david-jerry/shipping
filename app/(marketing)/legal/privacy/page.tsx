@@ -1,4 +1,14 @@
+import type { Metadata } from "next"
+import { buildMarketingMetadata } from "@/lib/seo"
+
 /* eslint-disable react/no-unescaped-entities */
+export const metadata: Metadata = buildMarketingMetadata({
+  title: "Privacy Policy | Lyftberan",
+  description:
+    "Read how Lyftberan collects, uses, shares, and protects personal and shipment-related information.",
+  path: "/legal/privacy",
+})
+
 export default function PrivacyPage() {
   return (
     <div className="mx-auto max-w-4xl px-6 py-16">
