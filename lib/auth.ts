@@ -27,7 +27,26 @@ const socialProviders = {
         : {}),
 };
 
+const allowedHosts = [
+    "jeremiahdavid.online",
+    "*.jeremiahdavid.online",
+    "localhost:3000",
+];
+
+const trustedOrigins = [
+    "https://jeremiahdavid.online",
+    "https://*.jeremiahdavid.online",
+    "http://localhost:3000",
+    "https://localhost:3000",
+];
+
 export const auth = betterAuth({
+    baseURL: {
+        allowedHosts,
+        protocol: process.env.NODE_ENV === "development" ? "http" : "https",
+        fallback: "https://lyftberan.jeremiahdavid.online",
+    },
+    trustedOrigins,
     database: drizzleAdapter(db, {
         provider: "pg",
         schema: authSchema,
