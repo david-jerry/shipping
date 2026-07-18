@@ -7,6 +7,7 @@ import { ThemeProvider } from "@/components/theme-provider"
 import { Toaster } from "@/components/ui/sonner"
 import { siteUrl } from "@/lib/seo"
 import { cn } from "@/lib/utils"
+import { Analytics } from "@vercel/analytics/next"
 
 const oxaniumHeading = Oxanium({
   subsets: ["latin"],
@@ -104,6 +105,7 @@ export default function RootLayout({
               {children}
             </div>
             <Toaster richColors />
+            <Analytics />
           </ThemeProvider>
         </QueryProvider>
       </body>
